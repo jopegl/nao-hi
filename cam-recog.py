@@ -1,17 +1,19 @@
 import mediapipe as mp
 import cv2
-import os
 import qi
 import numpy as np
 import time
 
 session = qi.Session()
 
+
 print("Sessão iniciada")
+
+limite_polegar = 0.07
 
 def todos_dedos_levantados(hand_landmarks):
     lm = hand_landmarks.landmark
-    if (lm[4].x < lm[2].x):
+    if abs(lm[4].x - lm[2].x) < limite_polegar:
         return False
     if(lm[8].y > lm[6].y):
         return False
@@ -29,16 +31,17 @@ print("Rodando")
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 
-session.connect("localhost:38209")
+session.connect("tcp://169.254.51.192:9559")
 print("Conectou")
 cam_proxy = session.service('ALVideoDevice')
-animation = session.service('ALAnimationDevice')
-motion = session.service('ALMotionDevice')
+animation = session.service('ALBehaviorManager')
+motion = session.service('ALMotion')
+
 
 print("Pegou camera e mov")
 
 def acenar():
-    animation.run('animations/Stand/Gestures/Hey_1')
+    animation.runBehavior('animations/Stand/Gestures/Hey_2')
 
 motion.wakeUp()
 
@@ -56,7 +59,7 @@ capture = cam_proxy.subscribeCamera(camera_name, cam_id, resolution, color_space
 hands = mp_hands.Hands(
     static_image_mode = False,
     max_num_hands = 2,
-    min_detection_confidence = 0.5,
+    min_detection_confidence = 0.7,
     min_tracking_confidence = 0.5
 )
 
@@ -94,6 +97,8 @@ while True:
                 print('Dedos não levantados')
 
     cv2.imshow('Camera', frame)
+
+    acenando = False
 
     if(cv2.waitKey(1) & 0xFF == ord('q')):
         break
