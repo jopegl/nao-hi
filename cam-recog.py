@@ -3,6 +3,7 @@ import cv2
 import os
 import qi
 import numpy as np
+import time
 
 session = qi.Session()
 
@@ -28,19 +29,25 @@ print("Rodando")
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 
-
-session.connect("tcp://169.254.51.192:9559")
+session.connect("localhost:38209")
 print("Conectou")
 cam_proxy = session.service('ALVideoDevice')
-motion = session.service('ALMotion')
+animation = session.service('ALAnimationDevice')
+motion = session.service('ALMotionDevice')
 
 print("Pegou camera e mov")
+
+def acenar():
+    animation.run('animations/Stand/Gestures/Hey_1')
 
 motion.wakeUp()
 
 resolution = 2 
 color_space = 11  
 fps = 30
+cooldown = 5
+acenando = False
+tempo_aceno = 0
 
 camera_name = "cam_recog"
 cam_id = 0  # 0=top, 1=bottom
@@ -63,6 +70,7 @@ while True:
     height = nao_image[1]
     array = nao_image[6]  
     frame = np.frombuffer(array, dtype=np.uint8).reshape((height, width, 3))
+    print(frame)
 
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -75,15 +83,20 @@ while True:
                 frame, hand_landmarks, mp_hands.HAND_CONNECTIONS
             )
 
-            if(todos_dedos_levantados(hand_landmarks)):
+            if(todos_dedos_levantados(hand_landmarks) and not acenando and time.time()- tempo_aceno > cooldown):
+                acenando = True
+                tempo_aceno = time.time()
+                acenar()
                 print('Todos os dedos levantados!')
+            elif time.time() - tempo_aceno < cooldown:
+                print('Esperando para acenar...')
             else:
-                print('Dedos nao levantados')
+                print('Dedos não levantados')
 
-    #cv2.imshow('Camera', frame)
+    cv2.imshow('Camera', frame)
 
-    #if(cv2.waitKey(1) & 0xFF == ord('q')):
-     #   break
+    if(cv2.waitKey(1) & 0xFF == ord('q')):
+        break
 
 cam_proxy.unsubscribe(capture)
 cv2.destroyAllWindows()
